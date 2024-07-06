@@ -1,12 +1,12 @@
 # How to
 
-Recordings get saved to recordings.
+First install MetavisionSDK on a Linux system (here Ubuntu 22)
 
-Saves
+RUN: 
 
-`python3 recordFromEVK4.py -b custom_biases/unnar_settings.bias
+`python3 recordFromEVK4.py -b custom_biases/unnar_settings.bias`
 
-
+to use bias parameters from Unnar. Otherwise it uses default parameters.
 
 
 `# Configuration parameters
