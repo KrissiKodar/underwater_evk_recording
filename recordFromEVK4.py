@@ -9,12 +9,14 @@ from metavision_core.event_io import EventsIterator
 RECORDING_TIME = 5  # seconds to record
 WAITING_TIME = 5    # seconds to wait between recordings
 FOLDER_SIZE_CHECK_INTERVAL = 1  # seconds
+MIN_FREE_SPACE_GB = 0.5  # Minimum free space in GB to keep recording safely
 
 def parse_args():
     """Parse command line arguments."""
     parser = argparse.ArgumentParser(description='Metavision RAW file Recorder sample.',
                                      formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument('-b', '--biases', type=str, help='Path to the biases file')
+    parser.add_argument('-d', '--data_size', type=float, default=100.0, help='Amount of data to record in MB')
     args = parser.parse_args()
     return args
 
@@ -57,7 +59,7 @@ def main():
 
     # Default output directory
     external_storage_dir = find_external_storage()
-    if external_storage_dir:
+    if (external_storage_dir):
         base_output_dir = os.path.join(external_storage_dir, "recordings")
         print(f"External storage found: {external_storage_dir}")
     else:
@@ -76,7 +78,7 @@ def main():
     if args.biases:
         biases_dict = read_biases(args.biases)
 
-    def record_cycle():
+    def record_cycle(data_size_mb):
         nonlocal biases_dict, output_dir
 
         # HAL Device on live camera
@@ -121,6 +123,13 @@ def main():
                     free_space = free / (1024 ** 3)  # Convert to GB
                     print(f"Folder size: {folder_size:.2f} MB, Free space: {free_space:.2f} GB")
                     last_check_time = time.time()  # reset last check time
+
+                    # Stop recording if folder size exceeds specified limit or if free space is too low
+                    if folder_size >= data_size_mb or free_space <= MIN_FREE_SPACE_GB:
+                        print(f"Stopping recording: folder size {folder_size:.2f} MB, free space {free_space:.2f} GB")
+                        device.get_i_events_stream().stop_log_raw_data()
+                        return folder_size >= data_size_mb  # Return True if data size limit is reached
+
             if current_time - start_time >= RECORDING_TIME:
                 break
                 
@@ -130,7 +139,9 @@ def main():
 
     try:
         while True:
-            record_cycle()
+            if record_cycle(args.data_size):
+                print("Data size limit reached. Stopping further recordings.")
+                break
             print(f"Pausing for {WAITING_TIME} seconds...")
             time.sleep(WAITING_TIME)
     except KeyboardInterrupt:
