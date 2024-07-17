@@ -32,11 +32,6 @@ def read_biases(file_path):
             
     return biases
 
-
-# TODO
-# Abort if storage is about to fill up
-# instead of recording for x seconds, record y amount of data, then pause
-
 def get_folder_size(folder):
     """Get the size of the folder."""
     total_size = 0
@@ -46,12 +41,29 @@ def get_folder_size(folder):
             total_size += os.path.getsize(fp)
     return total_size
 
+def find_external_storage():
+    """Find an external storage device."""
+    with open('/proc/mounts', 'r') as f:
+        for line in f:
+            if '/media/' in line:
+                parts = line.split()
+                mount_dir = parts[1]
+                return mount_dir
+    return None
+
 def main():
     """ Main """
     args = parse_args()
 
     # Default output directory
-    base_output_dir = "recordings"
+    external_storage_dir = find_external_storage()
+    if external_storage_dir:
+        base_output_dir = os.path.join(external_storage_dir, "recordings")
+        print(f"External storage found: {external_storage_dir}")
+    else:
+        base_output_dir = "recordings"
+        print("No external storage found, using local directory.")
+
     os.makedirs(base_output_dir, exist_ok=True)
 
     # Timestamped recording directory
@@ -63,8 +75,6 @@ def main():
     biases_dict = None
     if args.biases:
         biases_dict = read_biases(args.biases)
-
-    
 
     def record_cycle():
         nonlocal biases_dict, output_dir
