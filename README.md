@@ -8,6 +8,15 @@ RUN:
 
 to use bias parameters from Unnar. Otherwise it uses default parameters.
 
+
+to RUN with file size limit and biases:
+
+`python3 recordFromEVK4.py -b custom_biases/unnar_settings.bias -d 1500`
+
+This will make record until 1.5Gb limit has been reached. (configure this as needed)
+
+
+
 Configuration for the recordings is at the top of the python file, we can change this later.
 
 ```# Configuration parameters
