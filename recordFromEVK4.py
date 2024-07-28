@@ -2,6 +2,7 @@ import argparse
 import time
 import os
 import shutil
+import logging
 from metavision_core.event_io.raw_reader import initiate_device
 from metavision_core.event_io import EventsIterator
 
@@ -63,34 +64,41 @@ def initialize_device_with_biases(biases_dict, print_biases_message_once):
                 try:
                     biases.set(bias_name, bias_value)
                     if print_biases_message_once:
-                        print(f'Successfully set {bias_name} to {bias_value}')
+                        logger.info(f'Successfully set {bias_name} to {bias_value}')
                 except Exception as e:
                     if print_biases_message_once:
-                        print(f'Failed to set {bias_name}: {e}')
-                    print("Using default biases instead")
+                        logger.error(f'Failed to set {bias_name}: {e}')
+                    logger.warning("Using default biases instead")
                     break
         else:
             if print_biases_message_once:
-                print("Failed to access biases interface, using default biases")
+                logger.warning("Failed to access biases interface, using default biases")
     return device
 
 def main():
     """ Main """
     args = parse_args()
 
+    # Set up logging with a unique filename
+    timestamp = time.strftime("%y%m%d_%H%M%S", time.localtime())
+    log_filename = f"recording_log_{timestamp}.log"
+    logging.basicConfig(filename=log_filename, level=logging.INFO,
+                        format='%(asctime)s - %(levelname)s - %(message)s')
+    global logger
+    logger = logging.getLogger()
+
     # Default output directory
     external_storage_dir = find_external_storage()
     if external_storage_dir:
         base_output_dir = os.path.join(external_storage_dir, "recordings")
-        print(f"External storage found: {external_storage_dir}")
+        logger.info(f"External storage found: {external_storage_dir}")
     else:
         base_output_dir = "recordings"
-        print("No external storage found, using local directory.")
+        logger.warning("No external storage found, using local directory.")
 
     os.makedirs(base_output_dir, exist_ok=True)
 
     # Timestamped recording directory
-    timestamp = time.strftime("%y%m%d_%H%M%S", time.localtime())
     output_dir = os.path.join(base_output_dir, f"recording_{timestamp}")
     os.makedirs(output_dir, exist_ok=True)
 
@@ -112,7 +120,7 @@ def main():
         # Start the recording
         if device.get_i_events_stream():
             log_path = os.path.join(output_dir, f"recording_{time.strftime('%y%m%d_%H%M%S', time.localtime())}.raw")
-            print(f'Recording to {log_path}')
+            logger.info(f'Recording to {log_path}')
             device.get_i_events_stream().log_raw_data(log_path)
 
         start_time = time.time()
@@ -131,12 +139,12 @@ def main():
                     folder_size = get_folder_size(output_dir) / (1024 ** 2)  # Convert to MB
                     total, used, free = shutil.disk_usage(output_dir)
                     free_space = free / (1024 ** 3)  # Convert to GB
-                    print(f"Folder size: {folder_size:.2f} MB, Free space: {free_space:.2f} GB")
+                    logger.info(f"Folder size: {folder_size:.2f} MB, Free space: {free_space:.2f} GB")
                     last_check_time = time.time()  # reset last check time
 
                     # Stop recording if free space is too low or if data size limit is specified and reached
                     if free_space <= MIN_FREE_SPACE_GB or (data_size_mb is not None and folder_size >= data_size_mb):
-                        print(f"Stopping recording: folder size {folder_size:.2f} MB, free space {free_space:.2f} GB")
+                        logger.info(f"Stopping recording: folder size {folder_size:.2f} MB, free space {free_space:.2f} GB")
                         device.get_i_events_stream().stop_log_raw_data()
                         return data_size_mb is not None and folder_size >= data_size_mb  # Return True if data size limit is reached
 
@@ -150,17 +158,17 @@ def main():
     try:
         while True:
             if record_cycle(args.data_size):
-                print("Data size limit reached. Stopping further recordings.")
+                logger.info("Data size limit reached. Stopping further recordings.")
                 break
             total, used, free = shutil.disk_usage(output_dir)
             free_space = free / (1024 ** 3)  # Convert to GB
             if free_space <= MIN_FREE_SPACE_GB:
-                print(f"Free space is below the limit ({MIN_FREE_SPACE_GB} GB). Stopping the program.")
+                logger.warning(f"Free space is below the limit ({MIN_FREE_SPACE_GB} GB). Stopping the program.")
                 break
-            print(f"Pausing for {WAITING_TIME} seconds...")
+            logger.info(f"Pausing for {WAITING_TIME} seconds...")
             time.sleep(WAITING_TIME)
     except KeyboardInterrupt:
-        print("Stopping the program...")
+        logger.info("Stopping the program...")
 
 if __name__ == "__main__":
     main()
