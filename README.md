@@ -4,9 +4,11 @@ First install MetavisionSDK on a Linux system (here Ubuntu 22)
 
 RUN: 
 
-`python3 recordFromEVK4.py -b custom_biases/unnar_settings.bias`
+`python3 recordFromEVK4.py -b custom_biases/unnar_settings.bias -p`
 
 to use bias parameters from Unnar. Otherwise it uses default parameters.
+
+Use `-p` to print out the logging statements to the terminal.
 
 
 to RUN with file size limit and biases:
@@ -14,7 +16,6 @@ to RUN with file size limit and biases:
 `python3 recordFromEVK4.py -b custom_biases/unnar_settings.bias -d 1500`
 
 This will make record until 1.5Gb limit has been reached. (configure this as needed)
-
 
 
 Configuration for the recordings is at the top of the python file, we can change this later.
