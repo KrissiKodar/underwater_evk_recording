@@ -1,6 +1,8 @@
 *.raw
 *.raw.tmp_index
+metavision_samples
 test.py
+testingStuff.py
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
