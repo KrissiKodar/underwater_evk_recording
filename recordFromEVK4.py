@@ -56,7 +56,7 @@ def set_device_bias_configuration(biases_dict, print_biases_message_once, logger
 
     return device
 
-def limit_CD_rate(logger, args, device):
+def set_contrast_detection_rate_limit(logger, args, device):
     if device.get_i_erc_module():  # we test if the facility is available on this device before using it
         log_and_print_info(logger, "ERC module is available", args)
         device.get_i_erc_module().enable(True)
@@ -71,10 +71,8 @@ def record_cycle(recording_counter, logger, biases_dict, output_dir, print_biase
         start_time = time.time()
         last_check_time = start_time
         
-        # limit the contrast detection event rate
-        limit_CD_rate(logger, args, device)
 
-
+        set_contrast_detection_rate_limit(logger, args, device)
 
         start_time = time.time()
         last_check_time = start_time
