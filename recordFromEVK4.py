@@ -1,3 +1,4 @@
+
 import argparse
 import time
 import os
@@ -6,11 +7,14 @@ import logging
 from metavision_core.event_io.raw_reader import initiate_device
 from metavision_core.event_io import EventsIterator
 
+from helpfulFunctions import *
+
 # Configuration parameters
-RECORDING_TIME = 5  # seconds to record
-WAITING_TIME = 5    # seconds to wait between recordings
-FOLDER_SIZE_CHECK_INTERVAL = 1  # seconds
-MIN_FREE_SPACE_GB = 1  # Minimum free space in GB to keep recording safely
+RECORDING_TIME = 10               # seconds to record
+WAITING_TIME = 5                  # seconds to wait between recordings
+FOLDER_SIZE_CHECK_INTERVAL = 1    # seconds
+MIN_FREE_SPACE_GB = 1             # Minimum free space in GB to keep recording safely
+EVENT_RATE_CONTROL = 10e6          # Event rate control in events per second
 
 def parse_args():
     """Parse command line arguments."""
@@ -22,40 +26,8 @@ def parse_args():
     args = parser.parse_args()
     return args
 
-def read_biases(file_path):
-    """Read biases from the given file."""
-    biases = {}
-    with open(file_path, 'r') as file:
-        for line in file:
-            if line.startswith("#") or not line.strip():
-                continue
-            parts = line.split()
-            bias_value = int(parts[0].strip())
-            bias_name = parts[2].strip()
-            biases[bias_name] = bias_value
-            
-    return biases
 
-def get_folder_size(folder):
-    """Get the size of the folder."""
-    total_size = 0
-    for dirpath, dirnames, filenames in os.walk(folder):
-        for f in filenames:
-            fp = os.path.join(dirpath, f)
-            total_size += os.path.getsize(fp)
-    return total_size
-
-def find_external_storage():
-    """Find an external storage device."""
-    with open('/proc/mounts', 'r') as f:
-        for line in f:
-            if '/media/' in line:
-                parts = line.split()
-                mount_dir = parts[1]
-                return mount_dir
-    return None
-
-def initialize_device_with_biases(biases_dict, print_biases_message_once, args):
+def initialize_device_with_biases(biases_dict, print_biases_message_once, logger, args):
     """Initialize the device and set biases if provided."""
     device = initiate_device("")
     if biases_dict:
@@ -65,28 +37,72 @@ def initialize_device_with_biases(biases_dict, print_biases_message_once, args):
                 try:
                     biases.set(bias_name, bias_value)
                     if print_biases_message_once:
-                        if args.print_logs:
-                            print(f'Successfully set {bias_name} to {bias_value}')
-                        else:
-                            logger.info(f'Successfully set {bias_name} to {bias_value}')
+                        log_and_print_info(logger, f'Successfully set {bias_name} to {bias_value}', args)
                 except Exception as e:
                     if print_biases_message_once:
                         if args.print_logs:
-                            print(f'Failed to set {bias_name}: {e}')
-                        else:
-                            logger.error(f'Failed to set {bias_name}: {e}')
+                            log_and_print_warning(logger, f'Failed to set {bias_name}: {e}', args)
+
                     if args.print_logs:
-                        print("Using default biases instead")
-                    else:
-                        logger.warning("Using default biases instead")
+                        log_and_print_warning(logger, "Using default biases instead", args)
                     break
         else:
             if print_biases_message_once:
-                logger.warning("Failed to access biases interface, using default biases")
-                if args.print_logs:
-                    print("Failed to access biases interface, using default biases")
+                log_and_print_warning(logger, "Failed to access biases interface, using default biases", args)
+
 
     return device
+
+
+def record_cycle(recording_counter, logger, biases_dict, output_dir, print_biases_message_once, args, data_size_mb=None):
+
+        # Initialize device and set biases
+        device = initialize_device_with_biases(biases_dict, print_biases_message_once, logger, args)
+
+
+        # Start the recording
+        if device.get_i_events_stream():
+            log_path = os.path.join(output_dir, f"{recording_counter}.raw")
+            log_and_print_info(logger, f'Recording to {log_path}', args)
+            device.get_i_events_stream().start()
+            device.get_i_events_stream().log_raw_data(log_path)
+
+        start_time = time.time()
+        last_check_time = start_time
+        
+        # limit the contrast detection event rate
+        if device.get_i_erc_module():  # we test if the facility is available on this device before using it
+            log_and_print_info(logger, "ERC module is available", args)
+            device.get_i_erc_module().enable(True)
+            device.get_i_erc_module().set_cd_event_rate(int(EVENT_RATE_CONTROL))
+
+
+        mv_iterator = EventsIterator.from_device(device=device)
+
+
+        for evs in mv_iterator:
+            # Process events to keep the recording going
+            current_time = time.time()
+            if current_time - start_time >= RECORDING_TIME:
+                device.get_i_events_stream().stop()
+    
+            #Periodically check folder size and free space
+            if time.time() - last_check_time >= FOLDER_SIZE_CHECK_INTERVAL:
+                folder_size, free_space = get_folder_size_and_free_space(output_dir)
+                log_folder_size_and_free_space(logger, folder_size, free_space, args)
+                
+                last_check_time = time.time()  # reset last check time
+    
+                # Stop recording if free space is too low or if data size limit is specified and reached
+                if free_space <= MIN_FREE_SPACE_GB or (data_size_mb is not None and folder_size >= data_size_mb):
+                    log_folder_size_and_free_space(logger, folder_size, free_space, args, prepend="Stopping recording:")
+                    device.get_i_events_stream().stop()
+                    break
+
+        
+        device.get_i_events_stream().stop_log_raw_data()
+        del device
+
 
 def main():
     """ Main """
@@ -97,22 +113,19 @@ def main():
     log_filename = f"recording_log_{timestamp}.log"
     logging.basicConfig(filename=log_filename, level=logging.INFO,
                         format='%(asctime)s - %(levelname)s - %(message)s')
-    global logger
+
     logger = logging.getLogger()
 
-    # Default output directory
+    recording_counter = 1    
+    # Default output directory  
     external_storage_dir = find_external_storage()
     if external_storage_dir:
         base_output_dir = os.path.join(external_storage_dir, "recordings")
-        logger.info(f"External storage found: {external_storage_dir}")
-        if args.print_logs:
-            print(f"External storage found: {external_storage_dir}")
-        
+        log_and_print_info(logger, f"External storage found: {external_storage_dir}", args)
     else:
         base_output_dir = "recordings"
-        logger.warning("No external storage found, using local directory.")
-        if args.print_logs:
-            print("No external storage found, using local directory.")
+        log_and_print_warning(logger, "No external storage found, using local directory.", args)
+
 
     os.makedirs(base_output_dir, exist_ok=True)
 
@@ -128,83 +141,23 @@ def main():
     # Flag to print biases message only once
     print_biases_message_once = True
 
-    def record_cycle(data_size_mb=None):
-        nonlocal biases_dict, output_dir, print_biases_message_once
-
-        # Initialize device and set biases
-        device = initialize_device_with_biases(biases_dict, print_biases_message_once, args)
-        print_biases_message_once = False  # Ensure the message is only printed once
-
-        # Start the recording
-        if device.get_i_events_stream():
-            log_path = os.path.join(output_dir, f"recording_{time.strftime('%y%m%d_%H%M%S', time.localtime())}.raw")
-            logger.info(f'Recording to {log_path}')
-            if args.print_logs:
-                print(f'Recording to {log_path}')
-
-            device.get_i_events_stream().log_raw_data(log_path)
-
-        start_time = time.time()
-        last_check_time = start_time
-        mv_iterator = EventsIterator.from_device(device=device)
-
-        while True:
-            for evs in mv_iterator:
-                # Process events to keep the recording going
-                current_time = time.time()
-                if current_time - start_time >= RECORDING_TIME:
-                    break
-
-                # Periodically check folder size and free space
-                if time.time() - last_check_time >= FOLDER_SIZE_CHECK_INTERVAL:
-                    folder_size = get_folder_size(output_dir) / (1024 ** 2)  # Convert to MB
-                    total, used, free = shutil.disk_usage(output_dir)
-                    free_space = free / (1024 ** 3)  # Convert to GB
-                    logger.info(f"Folder size: {folder_size:.2f} MB, Free space: {free_space:.2f} GB")
-                    if args.print_logs:
-                        print(f"Folder size: {folder_size:.2f} MB, Free space: {free_space:.2f} GB")
-                        
-                    last_check_time = time.time()  # reset last check time
-
-                    # Stop recording if free space is too low or if data size limit is specified and reached
-                    if free_space <= MIN_FREE_SPACE_GB or (data_size_mb is not None and folder_size >= data_size_mb):
-                        logger.info(f"Stopping recording: folder size {folder_size:.2f} MB, free space {free_space:.2f} GB")
-                        if args.print_logs:
-                            print(f"Stopping recording: folder size {folder_size:.2f} MB, free space {free_space:.2f} GB")
-                        device.get_i_events_stream().stop_log_raw_data()
-                        return data_size_mb is not None and folder_size >= data_size_mb  # Return True if data size limit is reached
-
-            if current_time - start_time >= RECORDING_TIME:
-                break
-                
-        # Stop the recording
-        device.get_i_events_stream().stop_log_raw_data()
-        del device
-
+    
     try:
         while True:
-            if record_cycle(args.data_size):
-                logger.info("Data size limit reached. Stopping further recordings.")
-                if args.print_logs:
-                    print("Data size limit reached. Stopping further recordings.")
+            if record_cycle(recording_counter, logger, biases_dict, output_dir, print_biases_message_once, args, args.data_size):
+                log_and_print_info(logger, "Data size limit reached. Stopping further recordings.", args)
                 break
-            total, used, free = shutil.disk_usage(output_dir)
-            free_space = free / (1024 ** 3)  # Convert to GB
+            folder_size, free_space = get_folder_size_and_free_space(output_dir)
             if free_space <= MIN_FREE_SPACE_GB:
-                logger.warning(f"Free space is below the limit ({MIN_FREE_SPACE_GB} GB). Stopping the program.")
-                if args.print_logs:
-                    print(f"Free space is below the limit ({MIN_FREE_SPACE_GB} GB). Stopping the program.")
-
+                log_and_print_warning(logger, f"Free space is below the limit ({MIN_FREE_SPACE_GB} GB). Stopping the program.", args)
                 break
-            if args.print_logs:
-                print(f"Pausing for {WAITING_TIME} seconds...")
-            else:
-                logger.info(f"Pausing for {WAITING_TIME} seconds...")
+            log_and_print_info(logger, f"Waiting for {WAITING_TIME} seconds...", args)
+            recording_counter += 1
+            print_biases_message_once = False  # Ensure the message is only printed once
             time.sleep(WAITING_TIME)
     except KeyboardInterrupt:
-        logger.info("Stopping the program...")
-        if args.print_logs:
-            print("Stopping the program...")
+        log_and_print_info(logger, "Stopping the program...", args)
+
 
             
 
