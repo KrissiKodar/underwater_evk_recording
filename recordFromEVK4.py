@@ -1,4 +1,5 @@
 
+from constants import *
 import argparse
 import time
 import os
@@ -9,12 +10,6 @@ from metavision_core.event_io import EventsIterator
 
 from helpfulFunctions import *
 
-# Configuration parameters
-RECORDING_TIME = 10               # seconds to record
-WAITING_TIME = 5                  # seconds to wait between recordings
-FOLDER_SIZE_CHECK_INTERVAL = 1    # seconds
-MIN_FREE_SPACE_GB = 1             # Minimum free space in GB to keep recording safely
-EVENT_RATE_CONTROL = 10e6          # Event rate control in events per second
 
 def parse_args():
     """Parse command line arguments."""
@@ -82,8 +77,8 @@ def record_cycle(recording_counter, logger, biases_dict, output_dir, print_biase
 
         for evs in mv_iterator:
             # Process events to keep the recording going
-            current_time = time.time()
-            if current_time - start_time >= RECORDING_TIME:
+
+            if over_recording_time(start_time):
                 device.get_i_events_stream().stop()
     
             #Periodically check folder size and free space
@@ -102,6 +97,8 @@ def record_cycle(recording_counter, logger, biases_dict, output_dir, print_biase
         
         device.get_i_events_stream().stop_log_raw_data()
         del device
+
+
 
 
 def main():

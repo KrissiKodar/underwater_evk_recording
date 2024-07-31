@@ -1,4 +1,5 @@
 
+from constants import *
 import argparse
 import time
 import os
@@ -45,7 +46,8 @@ def get_current_timestamp():
     timestamp = time.strftime("%y%m%d_%H%M%S", time.localtime())
     return timestamp
 
-
+def over_recording_time(start_time):
+    return time.time() - start_time >= RECORDING_TIME 
 
 def create_logger(timestamp):
     log_filename = f"recording_log_{timestamp}.log"
