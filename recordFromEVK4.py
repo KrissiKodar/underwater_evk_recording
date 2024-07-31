@@ -111,7 +111,6 @@ def main():
 
     recording_counter = 1    
 
-    # Default output directory  
     external_storage_dir = find_external_storage()
     base_output_dir = get_base_output_dir(args, logger, external_storage_dir)
 
