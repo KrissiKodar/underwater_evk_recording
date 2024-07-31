@@ -22,6 +22,17 @@ def read_biases(file_path):
             
     return biases
 
+def get_base_output_dir(args, logger, external_storage_dir):
+    if external_storage_dir:
+        base_output_dir = os.path.join(external_storage_dir, "recordings")
+        log_and_print_info(logger, f"External storage found: {external_storage_dir}", args)
+    else:
+        base_output_dir = "recordings"
+        log_and_print_warning(logger, "No external storage found, using local directory.", args)
+    return base_output_dir
+
+
+
 def get_folder_size(folder):
     """Get the size of the folder."""
     total_size = 0

@@ -113,12 +113,7 @@ def main():
 
     # Default output directory  
     external_storage_dir = find_external_storage()
-    if external_storage_dir:
-        base_output_dir = os.path.join(external_storage_dir, "recordings")
-        log_and_print_info(logger, f"External storage found: {external_storage_dir}", args)
-    else:
-        base_output_dir = "recordings"
-        log_and_print_warning(logger, "No external storage found, using local directory.", args)
+    base_output_dir = get_base_output_dir(args, logger, external_storage_dir)
 
 
     os.makedirs(base_output_dir, exist_ok=True)
@@ -150,6 +145,7 @@ def main():
             time.sleep(WAITING_TIME)
     except KeyboardInterrupt:
         log_and_print_info(logger, "Stopping the program...", args)
+
 
 
 
