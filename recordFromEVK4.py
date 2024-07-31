@@ -22,7 +22,15 @@ def parse_args():
     return args
 
 
-def initialize_device_with_biases(biases_dict, print_biases_message_once, logger, args):
+
+
+def initialize_device():
+    """Initialize the device."""
+    device = initiate_device("")
+    return device
+
+
+def set_device_bias_configuration(biases_dict, print_biases_message_once, logger, args):
     """Initialize the device and set biases if provided."""
     device = initiate_device("")
     if biases_dict:
@@ -48,23 +56,28 @@ def initialize_device_with_biases(biases_dict, print_biases_message_once, logger
 
     return device
 
+def limit_CD_rate(logger, args, device):
+    if device.get_i_erc_module():  # we test if the facility is available on this device before using it
+        log_and_print_info(logger, "ERC module is available", args)
+        device.get_i_erc_module().enable(True)
+        device.get_i_erc_module().set_cd_event_rate(int(EVENT_RATE_CONTROL))
 
 def record_cycle(recording_counter, logger, biases_dict, output_dir, print_biases_message_once, args, data_size_mb=None):
 
-        # Initialize device and set biases
-        device = initialize_device_with_biases(biases_dict, print_biases_message_once, logger, args)
-
+        device = initialize_device()
+        set_device_bias_configuration(biases_dict, print_biases_message_once, logger, args)
         start_device_recording(recording_counter, logger, output_dir, args, device)
 
         start_time = time.time()
         last_check_time = start_time
         
         # limit the contrast detection event rate
-        if device.get_i_erc_module():  # we test if the facility is available on this device before using it
-            log_and_print_info(logger, "ERC module is available", args)
-            device.get_i_erc_module().enable(True)
-            device.get_i_erc_module().set_cd_event_rate(int(EVENT_RATE_CONTROL))
+        limit_CD_rate(logger, args, device)
 
+
+
+        start_time = time.time()
+        last_check_time = start_time
 
         mv_iterator = EventsIterator.from_device(device=device)
 
@@ -91,6 +104,8 @@ def record_cycle(recording_counter, logger, biases_dict, output_dir, print_biase
         
         device.get_i_events_stream().stop_log_raw_data()
         del device
+
+
 
 
 
