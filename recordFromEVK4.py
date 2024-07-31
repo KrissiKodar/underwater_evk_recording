@@ -1,4 +1,3 @@
-
 from constants import *
 import argparse
 import time
@@ -82,8 +81,9 @@ def record_cycle(recording_counter, logger, biases_dict, output_dir, print_biase
                 folder_size, free_space = get_folder_size_and_free_space(output_dir)
                 log_folder_size_and_free_space(logger, folder_size, free_space, args)
                 
-                last_check_time = time.time()  # reset last check time
-    
+                last_check_time = time.time()  
+
+                
                 # Stop recording if free space is too low or if data size limit is specified and reached
                 if free_space <= MIN_FREE_SPACE_GB or (data_size_mb is not None and folder_size >= data_size_mb):
                     log_folder_size_and_free_space(logger, folder_size, free_space, args, prepend="Stopping recording:")
