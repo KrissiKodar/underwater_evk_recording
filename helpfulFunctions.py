@@ -8,6 +8,14 @@ import logging
 from metavision_core.event_io.raw_reader import initiate_device
 from metavision_core.event_io import EventsIterator
 
+def start_device_recording(recording_counter, logger, output_dir, args, device):
+    if device.get_i_events_stream():
+        log_path = os.path.join(output_dir, f"{recording_counter}.raw")
+        log_and_print_info(logger, f'Recording to {log_path}', args)
+        device.get_i_events_stream().start()
+        device.get_i_events_stream().log_raw_data(log_path)
+
+
 def read_biases(file_path):
     """Read biases from the given file."""
     biases = {}

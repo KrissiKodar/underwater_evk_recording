@@ -54,13 +54,7 @@ def record_cycle(recording_counter, logger, biases_dict, output_dir, print_biase
         # Initialize device and set biases
         device = initialize_device_with_biases(biases_dict, print_biases_message_once, logger, args)
 
-
-        # Start the recording
-        if device.get_i_events_stream():
-            log_path = os.path.join(output_dir, f"{recording_counter}.raw")
-            log_and_print_info(logger, f'Recording to {log_path}', args)
-            device.get_i_events_stream().start()
-            device.get_i_events_stream().log_raw_data(log_path)
+        start_device_recording(recording_counter, logger, output_dir, args, device)
 
         start_time = time.time()
         last_check_time = start_time
@@ -97,7 +91,6 @@ def record_cycle(recording_counter, logger, biases_dict, output_dir, print_biase
         
         device.get_i_events_stream().stop_log_raw_data()
         del device
-
 
 
 
