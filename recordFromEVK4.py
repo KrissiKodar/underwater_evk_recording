@@ -67,27 +67,21 @@ def record_cycle(recording_counter, logger, biases_dict, output_dir, print_biase
         device = initialize_device()
         set_device_bias_configuration(biases_dict, print_biases_message_once, logger, args)
         start_device_recording(recording_counter, logger, output_dir, args, device)
-
-        start_time = time.time()
-        last_check_time = start_time
-        
-
         set_contrast_detection_rate_limit(logger, args, device)
+
 
         start_time = time.time()
         last_check_time = start_time
 
         mv_iterator = EventsIterator.from_device(device=device)
 
-
         for evs in mv_iterator:
-            # Process events to keep the recording going
 
             if over_recording_time(start_time):
                 device.get_i_events_stream().stop()
     
             #Periodically check folder size and free space
-            if time.time() - last_check_time >= FOLDER_SIZE_CHECK_INTERVAL:
+            if over_folder_size_check_time(last_check_time):
                 folder_size, free_space = get_folder_size_and_free_space(output_dir)
                 log_folder_size_and_free_space(logger, folder_size, free_space, args)
                 
@@ -102,8 +96,6 @@ def record_cycle(recording_counter, logger, biases_dict, output_dir, print_biase
         
         device.get_i_events_stream().stop_log_raw_data()
         del device
-
-
 
 
 

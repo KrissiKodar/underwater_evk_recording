@@ -68,6 +68,10 @@ def get_current_timestamp():
 def over_recording_time(start_time):
     return time.time() - start_time >= RECORDING_TIME 
 
+def over_folder_size_check_time(last_check_time):
+    return time.time() - last_check_time >= FOLDER_SIZE_CHECK_INTERVAL
+
+
 def create_logger(timestamp):
     log_filename = f"recording_log_{timestamp}.log"
     logging.basicConfig(filename=log_filename, level=logging.INFO,
