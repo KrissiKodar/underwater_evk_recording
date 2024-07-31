@@ -109,14 +109,11 @@ def main():
     args = parse_args()
 
     # Set up logging with a unique filename
-    timestamp = time.strftime("%y%m%d_%H%M%S", time.localtime())
-    log_filename = f"recording_log_{timestamp}.log"
-    logging.basicConfig(filename=log_filename, level=logging.INFO,
-                        format='%(asctime)s - %(levelname)s - %(message)s')
-
-    logger = logging.getLogger()
+    timestamp = get_current_timestamp()
+    logger = create_logger(timestamp)
 
     recording_counter = 1    
+
     # Default output directory  
     external_storage_dir = find_external_storage()
     if external_storage_dir:
@@ -140,7 +137,6 @@ def main():
 
     # Flag to print biases message only once
     print_biases_message_once = True
-
     
     try:
         while True:
@@ -157,6 +153,7 @@ def main():
             time.sleep(WAITING_TIME)
     except KeyboardInterrupt:
         log_and_print_info(logger, "Stopping the program...", args)
+
 
 
             

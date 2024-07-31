@@ -40,6 +40,23 @@ def find_external_storage():
                 return mount_dir
     return None
 
+
+def get_current_timestamp():
+    timestamp = time.strftime("%y%m%d_%H%M%S", time.localtime())
+    return timestamp
+
+
+
+def create_logger(timestamp):
+    log_filename = f"recording_log_{timestamp}.log"
+    logging.basicConfig(filename=log_filename, level=logging.INFO,
+                        format='%(asctime)s - %(levelname)s - %(message)s')
+
+    logger = logging.getLogger()
+    return logger
+
+
+
 def log_and_print_info(logger, message, args):
     logger.info(message)
     if args.print_logs:
