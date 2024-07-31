@@ -20,15 +20,9 @@ def parse_args():
     args = parser.parse_args()
     return args
 
-def initialize_device():
-    """Initialize the device."""
-    device = initiate_device("")
-    return device
 
-
-def set_device_bias_configuration(biases_dict, print_biases_message_once, logger, args):
+def set_device_bias_configuration(device, biases_dict, print_biases_message_once, logger, args):
     """Initialize the device and set biases if provided."""
-    device = initiate_device("")
     if biases_dict:
         biases = device.get_i_ll_biases()
         if biases is not None:
@@ -59,16 +53,15 @@ def set_contrast_detection_rate_limit(logger, args, device):
         device.get_i_erc_module().set_cd_event_rate(int(EVENT_RATE_CONTROL))
 
 def get_device(recording_counter, logger, biases_dict, output_dir, print_biases_message_once, args):
-    device = initialize_device()
-    set_device_bias_configuration(biases_dict, print_biases_message_once, logger, args)
-    start_device_recording(recording_counter, logger, output_dir, args, device)
+    device = initiate_device("")
+    set_device_bias_configuration(device, biases_dict, print_biases_message_once, logger, args)
     set_contrast_detection_rate_limit(logger, args, device)
     return device
 
 def record_cycle(recording_counter, logger, biases_dict, output_dir, print_biases_message_once, args, data_size_mb=None):
 
         device = get_device(recording_counter, logger, biases_dict, output_dir, print_biases_message_once, args)
-
+        start_device_recording(recording_counter, logger, output_dir, args, device)
 
         start_time = time.time()
         last_check_time = start_time
@@ -86,7 +79,6 @@ def record_cycle(recording_counter, logger, biases_dict, output_dir, print_biase
                 log_folder_size_and_free_space(logger, folder_size, free_space, args)
                 
                 last_check_time = time.time()  
-
                 
                 # Stop recording if free space is too low or if data size limit is specified and reached
                 if free_space <= MIN_FREE_SPACE_GB or (data_size_mb is not None and folder_size >= data_size_mb):

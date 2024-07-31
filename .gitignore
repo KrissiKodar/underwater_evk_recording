@@ -4,6 +4,7 @@ metavision_samples
 test.py
 testingStuff.py
 test*
+imgui.ini
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
