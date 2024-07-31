@@ -58,12 +58,16 @@ def set_contrast_detection_rate_limit(logger, args, device):
         device.get_i_erc_module().enable(True)
         device.get_i_erc_module().set_cd_event_rate(int(EVENT_RATE_CONTROL))
 
+def get_device(recording_counter, logger, biases_dict, output_dir, print_biases_message_once, args):
+    device = initialize_device()
+    set_device_bias_configuration(biases_dict, print_biases_message_once, logger, args)
+    start_device_recording(recording_counter, logger, output_dir, args, device)
+    set_contrast_detection_rate_limit(logger, args, device)
+    return device
+
 def record_cycle(recording_counter, logger, biases_dict, output_dir, print_biases_message_once, args, data_size_mb=None):
 
-        device = initialize_device()
-        set_device_bias_configuration(biases_dict, print_biases_message_once, logger, args)
-        start_device_recording(recording_counter, logger, output_dir, args, device)
-        set_contrast_detection_rate_limit(logger, args, device)
+        device = get_device(recording_counter, logger, biases_dict, output_dir, print_biases_message_once, args)
 
 
         start_time = time.time()
@@ -93,6 +97,8 @@ def record_cycle(recording_counter, logger, biases_dict, output_dir, print_biase
         
         device.get_i_events_stream().stop_log_raw_data()
         del device
+
+
 
 
 
