@@ -58,6 +58,15 @@ def get_device(logger, biases_dict, print_biases_message_once, args):
     set_contrast_detection_rate_limit(logger, args, device)
     return device
 
+
+def start_device_recording(recording_counter, logger, output_dir, args, device):
+    if device.get_i_events_stream():
+        log_path = os.path.join(output_dir, f"{recording_counter}.raw")
+        log_and_print_info(logger, f'Recording to {log_path}', args)
+        device.get_i_events_stream().start()
+        device.get_i_events_stream().log_raw_data(log_path)
+
+
 def record_cycle(recording_counter, logger, biases_dict, output_dir, print_biases_message_once, args, data_size_mb=None):
 
         device = get_device(logger, biases_dict, print_biases_message_once, args)
