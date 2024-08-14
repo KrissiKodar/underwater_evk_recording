@@ -61,7 +61,8 @@ def get_device(logger, biases_dict, print_biases_message_once, args):
 
 def start_device_recording(recording_counter, logger, output_dir, args, device):
     if device.get_i_events_stream():
-        log_path = os.path.join(output_dir, f"{recording_counter}.raw")
+        name = get_current_timestamp()
+        log_path = os.path.join(output_dir, f"{name}.raw")
         log_and_print_info(logger, f'Recording to {log_path}', args)
         device.get_i_events_stream().start()
         device.get_i_events_stream().log_raw_data(log_path)
