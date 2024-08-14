@@ -46,7 +46,7 @@ def find_external_storage():
     """Find an external storage device."""
     with open('/proc/mounts', 'r') as f:
         for line in f:
-            if '/media/' in line:
+            if '/mnt/' in line:
                 parts = line.split()
                 mount_dir = parts[1]
                 return mount_dir
@@ -54,7 +54,7 @@ def find_external_storage():
 
 
 def get_current_timestamp():
-    timestamp = time.strftime("%y%m%d_%H%M%S", time.localtime())
+    timestamp = time.strftime("%d_%B_%Y_%H-%M-%S", time.localtime())
     return timestamp
 
 def over_recording_time(start_time):
