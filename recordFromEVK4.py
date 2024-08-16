@@ -9,6 +9,16 @@ from metavision_core.event_io import EventsIterator
 
 from helpfulFunctions import *
 
+import RPi.GPIO as GPIO
+
+# Pin Definition
+pressure_pin = 14
+
+# Pin Setup
+GPIO.setwarnings(False)  # Disable GPIO warnings
+GPIO.setmode(GPIO.BCM)   # Broadcom pin-numbering scheme
+GPIO.setup(pressure_pin, GPIO.IN)  # Input pin set as input
+
 
 def parse_args():
     """Parse command line arguments."""
@@ -101,6 +111,8 @@ def record_cycle(recording_counter, logger, biases_dict, output_dir, print_biase
         del device
 
 
+def is_depth_more_than_10_meters() -> bool:
+    return GPIO.input(pressure_pin) == GPIO.HIGH
 
 
 
@@ -134,17 +146,23 @@ def main():
     
     try:
         while True:
-            if record_cycle(recording_counter, logger, biases_dict, output_dir, print_biases_message_once, args, args.data_size):
-                log_and_print_info(logger, "Data size limit reached. Stopping further recordings.", args)
-                break
-            folder_size, free_space = get_folder_size_and_free_space(output_dir)
-            if free_space <= MIN_FREE_SPACE_GB:
-                log_and_print_warning(logger, f"Free space is below the limit ({MIN_FREE_SPACE_GB} GB). Stopping the program.", args)
-                break
-            log_and_print_info(logger, f"Waiting for {WAITING_TIME} seconds...", args)
-            recording_counter += 1
-            print_biases_message_once = False  # Ensure the message is only printed once
-            time.sleep(WAITING_TIME)
+
+            if is_depth_more_than_10_meters():
+
+                if record_cycle(recording_counter, logger, biases_dict, output_dir, print_biases_message_once, args, args.data_size):
+                    log_and_print_info(logger, "Data size limit reached. Stopping further recordings.", args)
+                    break
+                folder_size, free_space = get_folder_size_and_free_space(output_dir)
+                if free_space <= MIN_FREE_SPACE_GB:
+                    log_and_print_warning(logger, f"Free space is below the limit ({MIN_FREE_SPACE_GB} GB). Stopping the program.", args)
+                    break
+                log_and_print_info(logger, f"Waiting for {WAITING_TIME} seconds...", args)
+                recording_counter += 1
+                print_biases_message_once = False  # Ensure the message is only printed once
+                time.sleep(WAITING_TIME)
+            else:
+                time.sleep(5)
+
     except KeyboardInterrupt:
         log_and_print_info(logger, "Stopping the program...", args)
 
