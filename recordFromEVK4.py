@@ -9,16 +9,15 @@ from metavision_core.event_io import EventsIterator
 
 from helpfulFunctions import *
 
-import RPi.GPIO as GPIO
-
-# Pin Definition
-pressure_pin = 14
-
-# Pin Setup
-GPIO.setwarnings(False)  # Disable GPIO warnings
-GPIO.setmode(GPIO.BCM)   # Broadcom pin-numbering scheme
-GPIO.setup(pressure_pin, GPIO.IN)  # Input pin set as input
-
+# import RPi.GPIO as GPIO
+# 
+# # Pin Definition
+# pressure_pin = 14
+# 
+# # Pin Setup
+# GPIO.setwarnings(False)  # Disable GPIO warnings
+# GPIO.setmode(GPIO.BCM)   # Broadcom pin-numbering scheme
+# GPIO.setup(pressure_pin, GPIO.IN)  # Input pin set as input
 
 def parse_args():
     """Parse command line arguments."""
@@ -112,9 +111,8 @@ def record_cycle(recording_counter, logger, biases_dict, output_dir, print_biase
 
 
 def is_depth_more_than_10_meters() -> bool:
-    return GPIO.input(pressure_pin) == GPIO.HIGH
-
-
+    # return GPIO.input(pressure_pin) == GPIO.HIGH
+    return True
 
 def main():
     """ Main """
