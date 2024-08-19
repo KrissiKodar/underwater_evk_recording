@@ -126,9 +126,10 @@ def main():
 
     recording_counter = 1    
 
-    external_storage_dir = find_external_storage()
-    base_output_dir = get_base_output_dir(args, logger, external_storage_dir)
+    # external_storage_dir = find_external_storage()
+    external_storage_dir = "/dev/shm"
 
+    base_output_dir = get_base_output_dir(args, logger, external_storage_dir)
 
     os.makedirs(base_output_dir, exist_ok=True)
 
