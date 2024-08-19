@@ -118,23 +118,6 @@ def main():
     """ Main """
     args = parse_args()
 
-    # Set up logging with a unique filename
-    timestamp = get_current_timestamp()
-    logger = create_logger(timestamp)
-
-    recording_counter = 1    
-
-    # external_storage_dir = find_external_storage()
-    external_storage_dir = "/dev/shm"
-
-    base_output_dir = get_base_output_dir(args, logger, external_storage_dir)
-
-    os.makedirs(base_output_dir, exist_ok=True)
-
-    # Timestamped recording directory
-    output_dir = os.path.join(base_output_dir, f"recording_{timestamp}")
-    os.makedirs(output_dir, exist_ok=True)
-
     # Read biases from file if provided
     biases_dict = None
     if args.biases:
@@ -147,6 +130,23 @@ def main():
         while True:
 
             if is_depth_more_than_10_meters():
+
+                # Set up logging with a unique filename
+                timestamp = get_current_timestamp()
+                logger = create_logger(timestamp)
+
+                recording_counter = 1    
+
+                # external_storage_dir = find_external_storage()
+                external_storage_dir = "/dev/shm"
+
+                base_output_dir = get_base_output_dir(args, logger, external_storage_dir)
+
+                os.makedirs(base_output_dir, exist_ok=True)
+
+                # Timestamped recording directory
+                output_dir = os.path.join(base_output_dir, f"recording_{timestamp}")
+                os.makedirs(output_dir, exist_ok=True)
 
                 if record_cycle(recording_counter, logger, biases_dict, output_dir, print_biases_message_once, args, args.data_size):
                     log_and_print_info(logger, "Data size limit reached. Stopping further recordings.", args)
