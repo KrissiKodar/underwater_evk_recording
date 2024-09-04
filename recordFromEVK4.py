@@ -9,6 +9,8 @@ from metavision_core.event_io import EventsIterator
 
 from helpfulFunctions import *
 
+import RPi.GPIO as GPIO
+
 # import RPi.GPIO as GPIO
 # 
 # # Pin Definition
@@ -109,10 +111,24 @@ def record_cycle(recording_counter, logger, biases_dict, output_dir, print_biase
         device.get_i_events_stream().stop_log_raw_data()
         del device
 
-
 def is_depth_more_than_10_meters() -> bool:
-    # return GPIO.input(pressure_pin) == GPIO.HIGH
-    return True
+    pressure_pin = 4
+    while True:
+        try:
+            # Set up the GPIO pin
+            GPIO.setmode(GPIO.BCM)
+            GPIO.setup(pressure_pin, GPIO.IN)
+            status = GPIO.input(pressure_pin) == GPIO.HIGH
+            GPIO.cleanup(pressure_pin)
+            return status
+        except lgpio.error as e:
+            if 'GPIO busy' in str(e):
+                print(f"GPIO pin {pressure_pin} is busy. Retrying in 1 second...")
+                time.sleep(1)  # Wait for 1 second before retrying
+            else:
+                # Handle other unexpected errors
+                print(f"An unexpected error occurred: {e}")
+                raise
 
 def main():
     """ Main """
