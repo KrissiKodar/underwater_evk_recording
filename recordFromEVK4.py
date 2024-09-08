@@ -10,6 +10,7 @@ from metavision_core.event_io import EventsIterator
 from helpfulFunctions import *
 
 import RPi.GPIO as GPIO
+import lgpio
 
 # import RPi.GPIO as GPIO
 # 
@@ -96,7 +97,7 @@ def record_cycle(recording_counter, logger, biases_dict, output_dir, print_biase
     
             #Periodically check folder size and free space
             if over_folder_size_check_time(last_check_time):
-                folder_size, free_space = get_folder_size_and_free_space(output_dir)
+                folder_size, free_space = get_folder_size_and_free_space("/dev/shm")
                 log_folder_size_and_free_space(logger, folder_size, free_space, args)
                 
                 last_check_time = time.time()  
@@ -113,22 +114,28 @@ def record_cycle(recording_counter, logger, biases_dict, output_dir, print_biase
 
 def is_depth_more_than_10_meters() -> bool:
     pressure_pin = 4
-    while True:
-        try:
-            # Set up the GPIO pin
-            GPIO.setmode(GPIO.BCM)
-            GPIO.setup(pressure_pin, GPIO.IN)
-            status = GPIO.input(pressure_pin) == GPIO.HIGH
-            GPIO.cleanup(pressure_pin)
-            return status
-        except lgpio.error as e:
-            if 'GPIO busy' in str(e):
-                print(f"GPIO pin {pressure_pin} is busy. Retrying in 1 second...")
-                time.sleep(1)  # Wait for 1 second before retrying
-            else:
-                # Handle other unexpected errors
-                print(f"An unexpected error occurred: {e}")
-                raise
+    h = None
+
+    try:
+        h = lgpio.gpiochip_open(4)
+        lgpio.gpio_claim_input(h, pressure_pin)
+        time.sleep(0.1)
+        status = lgpio.gpio_read(h, pressure_pin)
+        return status == 1
+
+    except lgpio.error as e:
+        if 'GPIO busy' in str(e):
+            print(f"GPIO pin {pressure_pin} is busy. Retrying in 1 second...")
+            time.sleep(1)  # Wait for 1 second before retrying
+            return is_depth()  # Retry the function
+        else:
+            # Handle other unexpected errors
+            print(f"An unexpected error occurred: {e}")
+            raise
+    finally:
+        if h:
+            lgpio.gpiochip_close(h)  # Close the GPIO chip to free resources
+            print(f"Closed GPIO chip handle: {h}")
 
 def main():
     """ Main """
